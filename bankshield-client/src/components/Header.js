@@ -1,0 +1,46 @@
+// src/components/Header.js
+import React, { useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { CartContext } from '../App';
+
+const Header = () => {
+  const { cartItems, user, logout } = useContext(CartContext);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  return (
+    <header>
+        <div className="container">
+            <nav>
+            <div className="logo">
+                <Link to="/" style={{ color: '#fff', textDecoration: 'none' }}>BankShield</Link>
+            </div>
+            <ul>
+                <li><Link to="/">Главная</Link></li>
+                <li><a href="#services">Услуги</a></li>
+                <li><a href="#about">О компании</a></li>
+                <li><a href="#contact">Контакты</a></li>
+                {user ? (
+                <>
+                    <li><Link to="/cart">Корзина ({cartItems.length})</Link></li>
+                    <li className="username">{user.username}</li>
+                    <li><button onClick={handleLogout} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>Выход</button></li>
+                </>
+                ) : (
+                <>
+                    <li><Link to="/login">Логин</Link></li>
+                    <li><Link to="/register">Регистрация</Link></li>
+                </>
+                )}
+            </ul>
+            </nav>
+        </div>
+    </header>
+  );
+};
+
+export default Header;

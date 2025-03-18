@@ -3,10 +3,11 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../App';
+import "../App.css";
 
 const Home = () => {
   const [products, setProducts] = useState([]);
-  const { setCartItems, user } = useContext(CartContext);
+  const { user } = useContext(CartContext);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,8 +22,24 @@ const Home = () => {
       navigate('/login');
       return;
     }
-    setCartItems(prev => [...prev, product]);
-    alert(`Добавлено в корзину: ${product.name}`);
+    
+    // Преобразуем объект продукта в формат, ожидаемый бэкендом
+    const basketItem = {
+      product_id: product.id,
+      name: product.name,
+      description: product.description,
+      full_description: product.full_description,
+      price: product.price,
+      image: product.image || ""
+    };
+  
+    axios.post(`http://localhost:8000/basket/${user.id}`, basketItem)
+      .then(response => {
+        alert(`Добавлено в корзину: ${product.name}`);
+      })
+      .catch(error => {
+        alert(error.response.data.detail || 'Ошибка добавления в корзину');
+      });
   };
 
   const goToDetails = (id) => {
@@ -40,15 +57,15 @@ const Home = () => {
       </section>
 
       {/* Services Section */}
-      <section className="services" id="services">
+       <section className="services" id="services">
         <div className="container">
           <h2>Наши услуги</h2>
           <div className="service-grid">
             {products.map(product => (
               <div className="service-card" key={product.id}>
                 <h3>{product.name}</h3>
-                <p>{product.description.substring(0, 100)}...</p>
-                <p className="price">Цена: ${product.price}/месяц</p>
+                <p>{product.description.substring(0, 100)}</p>
+                <p className="price">Цена: {product.price} руб/месяц</p>
                 <div className="button-container">
                     <button className="detail-btn" onClick={() => goToDetails(product.id)}>
                         Подробнее
@@ -74,7 +91,7 @@ const Home = () => {
               <p>Мы стремимся к постоянному совершенствованию и гарантируем высокий уровень безопасности для наших клиентов.</p>
             </div>
             <div className="about-image">
-              <img src="https://ifellow.ru/upload/iblock/8f9/wvia47qqk3nns9hrxb5mcjeblju5l8zc/BANK.png" alt="О компании" />
+              <img src="../bank.png"/*"https://ifellow.ru/upload/iblock/8f9/wvia47qqk3nns9hrxb5mcjeblju5l8zc/BANK.png"*/ alt="О компании" />
             </div>
           </div>
         </div>
@@ -108,3 +125,6 @@ const Home = () => {
 };
 
 export default Home;
+
+
+

@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Cart from './pages/Cart';
 import ServiceDetails from './pages/ServiceDetails';
+import ChangePassword from './pages/ChangePassword';
 
 export const CartContext = React.createContext();
 
@@ -50,6 +51,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/change_password" element={<ChangePassword/>} />
         </Routes>
       </Router>
     </CartContext.Provider>

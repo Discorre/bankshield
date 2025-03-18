@@ -1,11 +1,11 @@
 // src/pages/Register.js
-import React, { useState, useContext } from 'react';
+import React, { useState/*, useContext*/ } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { CartContext } from '../App';
+//import { CartContext } from '../App';
 
 const Register = () => {
-  const { saveAuth } = useContext(CartContext);
+  //const { saveAuth } = useContext(CartContext);
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -16,8 +16,8 @@ const Register = () => {
     axios.post('http://localhost:8000/register', { username, email, password })
       .then(response => {
         alert(response.data.message);
-        saveAuth(response.data.user, response.data.access_token);
-        navigate('/');
+        //saveAuth(response.data.user, response.data.access_token);
+        navigate('/login');
       })
       .catch(error => {
         alert(error.response.data.detail || 'Ошибка регистрации');

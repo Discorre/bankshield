@@ -86,7 +86,7 @@ header ul li a:hover {
 }
 /* Hero Section */
 .hero {
-  background: url('https://img.freepik.com/free-vector/isometric-shield-security-safe-privacy-concept-abstract-low-poly-design-vector-illustration_587448-459.jpg?t=st=1741511159~exp=1741514759~hmac=015795d136720ad3fcfcbaf6c099d96f9bc3ecc18d5b0aa5c971282bb5d79569&w=1060') center/cover no-repeat;
+  background: url('../public/shield.png') center/cover no-repeat;
   height: 60vh;
   position: relative;
 }

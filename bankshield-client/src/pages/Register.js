@@ -16,7 +16,6 @@ const Register = () => {
     axios.post('http://localhost:8000/register', { username, email, password })
       .then(response => {
         alert(response.data.message);
-        //saveAuth(response.data.user, response.data.access_token);
         navigate('/login');
       })
       .catch(error => {

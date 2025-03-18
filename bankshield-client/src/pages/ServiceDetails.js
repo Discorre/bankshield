@@ -25,7 +25,7 @@ const ServiceDetails = () => {
         <h2>{service.name}</h2>
         <p>{service.full_description || service.description}</p>
         <p style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '20px' }}>
-          Цена: ${service.price}/месяц
+          Цена: {service.price} руб/месяц
         </p>
         <button className="detail-btn" style={{ marginTop: '20px' }} onClick={() => navigate(-1)}>
           Вернуться назад

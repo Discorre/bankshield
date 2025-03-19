@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Cart from './pages/Cart';
 import ServiceDetails from './pages/ServiceDetails';
 import ChangePassword from './pages/ChangePassword';
+import { ClipLoader } from 'react-spinners';
 
 export const CartContext = React.createContext();
 
@@ -14,18 +15,20 @@ function App() {
   const [cartItems, setCartItems] = useState([]);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // При загрузке приложения восстанавливаем пользователя и токен из localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const savedToken = localStorage.getItem('token');
-    if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
-      setToken(savedToken);
-    }
+    setTimeout(() => {
+      const savedUser = localStorage.getItem('user');
+      const savedToken = localStorage.getItem('token');
+      if (savedUser && savedToken) {
+        setUser(JSON.parse(savedUser));
+        setToken(savedToken);
+      }
+      setLoading(false);
+    }, 1000);
   }, []);
 
-  // Функция для сохранения авторизации
   const saveAuth = (userData, jwt) => {
     setUser(userData);
     setToken(jwt);
@@ -33,13 +36,20 @@ function App() {
     localStorage.setItem('token', jwt);
   };
 
-  // Функция выхода из аккаунта
   const logout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen w-screen fixed top-0 left-0">
+        <ClipLoader size={500} color={"#123abc"} loading={loading} />
+      </div>
+    );
+  }
 
   return (
     <CartContext.Provider value={{ cartItems, setCartItems, user, token, saveAuth, logout }}>
@@ -51,7 +61,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/change_password" element={<ChangePassword/>} />
+          <Route path="/change_password" element={<ChangePassword />} />
         </Routes>
       </Router>
     </CartContext.Provider>

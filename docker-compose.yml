@@ -42,7 +42,7 @@ services:
       context: ./bankshield-client
       dockerfile: Dockerfile
     ports:
-      - "3001:80"
+      - "80:80"
     networks:
       - bankshield-network
     restart: always

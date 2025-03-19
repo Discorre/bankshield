@@ -1,4 +1,3 @@
-// src/pages/ChangePassword.js
 import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { CartContext } from '../App';
@@ -8,7 +7,21 @@ const ChangePassword = () => {
   const { user } = useContext(CartContext);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
+
+  const passwordRegex = /(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z!@#$%^&*]{6,}/;
+
+  const handleNewPasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setNewPassword(newPassword);
+    
+    if (!passwordRegex.test(newPassword)) {
+      setPasswordError('Пароль должен содержать минимум 6 символов, включая цифру, заглавную и строчную буквы, а также спецсимвол (!@#$%^&*).');
+    } else {
+      setPasswordError('');
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -16,7 +29,9 @@ const ChangePassword = () => {
       alert('Пожалуйста, войдите в аккаунт.');
       return;
     }
-    axios.put('http://localhost:8000/change_password', {
+    if (passwordError) return;
+    
+    axios.patch('http://localhost:8000/change_password', {
       email: user.email,
       old_password: oldPassword,
       new_password: newPassword
@@ -45,10 +60,11 @@ const ChangePassword = () => {
           type="password" 
           placeholder="Новый пароль" 
           value={newPassword} 
-          onChange={e => setNewPassword(e.target.value)} 
+          onChange={handleNewPasswordChange} 
           required 
         />
-        <button type="submit">Сменить пароль</button>
+        {passwordError && <p className="error-message">{passwordError}</p>}
+        <button type="submit" disabled={!!passwordError}>Сменить пароль</button>
       </form>
     </div>
   );

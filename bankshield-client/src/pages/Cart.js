@@ -1,4 +1,3 @@
-// src/pages/Cart.js
 import React, { useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { CartContext } from '../App';

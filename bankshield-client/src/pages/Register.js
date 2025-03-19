@@ -1,25 +1,38 @@
-// src/pages/Register.js
-import React, { useState/*, useContext*/ } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-//import { CartContext } from '../App';
 
 const Register = () => {
-  //const { saveAuth } = useContext(CartContext);
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  const passwordRegex = /(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z!@#$%^&*]{6,}/;
+
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    
+    if (!passwordRegex.test(newPassword)) {
+      setPasswordError('Пароль должен содержать минимум 6 символов, включая цифру, заглавную и строчную буквы, а также спецсимвол (!@#$%^&*).');
+    } else {
+      setPasswordError('');
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (passwordError) return;
+    
     axios.post('http://localhost:8000/register', { username, email, password })
       .then(response => {
         alert(response.data.message);
         navigate('/login');
       })
       .catch(error => {
-        alert(error.response.data.detail || 'Ошибка регистрации');
+        alert(error.response?.data?.detail || 'Ошибка регистрации');
       });
   };
 
@@ -29,8 +42,9 @@ const Register = () => {
       <form onSubmit={handleSubmit}>
         <input type="text" placeholder="Имя" value={username} onChange={e => setUsername(e.target.value)} required />
         <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <input type="password" placeholder="Пароль" value={password} onChange={e => setPassword(e.target.value)} required />
-        <button type="submit">Зарегистрироваться</button>
+        <input type="password" placeholder="Пароль" value={password} onChange={handlePasswordChange} required />
+        {passwordError && <p className="error-message">{passwordError}</p>}
+        <button type="submit" disabled={!!passwordError}>Зарегистрироваться</button>
       </form>
     </div>
   );

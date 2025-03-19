@@ -10,8 +10,6 @@ import uuid, jwt, datetime, uvicorn
 # Конфигурация базы данных
 # ==============================
 
-#DATABASE_URL = "postgresql://discorre:0412@localhost/bankshield"
-
 DATABASE_URL = "postgresql+psycopg2://discorre1:0412@db:5432/bankshield"
 
 
@@ -75,7 +73,7 @@ class UserSchema(BaseModel):
     email: str
 
     class Config:
-        from_attributes = True  # Для поддержки from_orm
+        from_attributes = True
 
 class UserCreateSchema(BaseModel):
     username: str
@@ -107,7 +105,7 @@ class BasketItemSchema(BaseModel):
 # ==============================
 # Конфигурация JWT
 # ==============================
-SECRET_KEY = "your-secret-key"  # Замените на надежный ключ
+SECRET_KEY = "very-sicret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -258,8 +256,8 @@ def register(user: UserCreateSchema, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    access_token = create_access_token(data={"sub": db_user.email})
-    return {"message": "Регистрация прошла успешно", "user": UserSchema.from_orm(db_user), "access_token": access_token}
+    #access_token = create_access_token(data={"sub": db_user.email})
+    return {"message": "Регистрация прошла успешно"}#, "user": UserSchema.from_orm(db_user)}#, "access_token": access_token}
 
 @app.post("/login", response_model=dict)
 def login(data: LoginData, db: Session = Depends(get_db)):
@@ -272,7 +270,7 @@ def login(data: LoginData, db: Session = Depends(get_db)):
 # ==============================
 # Эндпоинт для смены пароля
 # ==============================
-@app.put("/change_password")
+@app.patch("/change_password")
 def change_password(data: ChangePasswordData, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user:

@@ -1,4 +1,3 @@
-// src/pages/Home.js
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -91,7 +90,7 @@ const Home = () => {
               <p>Мы стремимся к постоянному совершенствованию и гарантируем высокий уровень безопасности для наших клиентов.</p>
             </div>
             <div className="about-image">
-              <img src="../bank.png"/*"https://ifellow.ru/upload/iblock/8f9/wvia47qqk3nns9hrxb5mcjeblju5l8zc/BANK.png"*/ alt="О компании" />
+              <img src="../bank.png" alt="О компании" />
             </div>
           </div>
         </div>

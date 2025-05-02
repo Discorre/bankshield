@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -24,15 +24,13 @@ const Register = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (passwordError) return;
-    
-    axios.post('http://localhost:8000/register', { username, email, password })
+    axios.post('http://localhost:8000/api/v1/register', { username, email, password })
       .then(response => {
         alert(response.data.message);
         navigate('/login');
       })
       .catch(error => {
-        alert(error.response?.data?.detail || 'Ошибка регистрации');
+        alert(error.response.data.detail || 'Ошибка регистрации');
       });
   };
 

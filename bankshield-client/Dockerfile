@@ -19,7 +19,7 @@ FROM nginx:alpine
 COPY --from=builder /app/build /usr/share/nginx/html
 
 # 7. Копируем кастомный конфиг Nginx (если нужно)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+#COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # 8. Запускаем Nginx
 CMD ["nginx", "-g", "daemon off;"]

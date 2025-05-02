@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+gunicorn
 pydantic
 SQLAlchemy
 alembic
@@ -8,4 +9,8 @@ PyJWT
 passlib[bcrypt]
 psycopg2
 psycopg2-binary>=2.9
-python-dotenv
+passlib
+bcrypt<4.0.0
+python-jose[cryptography]==3.3.0
+redis_client
+pydantic[email]

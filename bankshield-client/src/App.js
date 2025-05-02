@@ -7,7 +7,9 @@ import Register from './pages/Register';
 import Cart from './pages/Cart';
 import ServiceDetails from './pages/ServiceDetails';
 import ChangePassword from './pages/ChangePassword';
+import ProtectedRoute from "./components/ProtectedRoute";
 import { ClipLoader } from 'react-spinners';
+import api from './api/api';
 
 export const CartContext = React.createContext();
 
@@ -36,13 +38,22 @@ function App() {
     localStorage.setItem('token', jwt);
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await api.post('http://localhost:8000/api/v1/logout', {}, {
+        headers: {
+          'refresh-token': localStorage.getItem('refreshToken')
+        }
+      });
+  
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+  
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Ошибка при выходе:', error.response?.data || error.message);
+    }
   };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen w-screen fixed top-0 left-0">
@@ -59,9 +70,15 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/service/:id" element={<ServiceDetails />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/change_password" element={<ChangePassword />} />
+          <Route path="/register" element={<Register />} /> 
+          <Route 
+            path="/cart"
+            element={<ProtectedRoute>
+              <Cart />
+            </ProtectedRoute>} />
+          <Route 
+            path="/change_password"
+            element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         </Routes>
       </Router>
     </CartContext.Provider>

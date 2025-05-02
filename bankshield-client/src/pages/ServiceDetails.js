@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/api';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const ServiceDetails = () => {
@@ -8,7 +8,7 @@ const ServiceDetails = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get(`http://localhost:8000/products/${id}`)
+    api.get(`http://localhost:8000/api/v1/products/${id}`)
       .then(response => setService(response.data))
       .catch(error => {
         alert('Услуга не найдена');

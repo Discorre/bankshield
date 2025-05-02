@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../App';
 import "../App.css";
+import axios from 'axios';
+import api from '../api/api';
 
 const Home = () => {
   const [products, setProducts] = useState([]);
@@ -10,9 +11,11 @@ const Home = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get('http://localhost:8000/products')
-      .then(response => setProducts(response.data))
-      .catch(error => console.error('Ошибка при получении продуктов:', error));
+    api.get(`http://localhost:8000/api/v1/products`)
+    .then(response => setProducts(response.data))
+    .catch(error => {
+      alert('Услуга не найдена');
+    });
   }, []);
 
   const addToCart = (product) => {
@@ -32,13 +35,64 @@ const Home = () => {
       image: product.image || ""
     };
   
-    axios.post(`http://localhost:8000/basket/${user.id}`, basketItem)
-      .then(response => {
-        alert(`Добавлено в корзину: ${product.name}`);
+    const accessToken = localStorage.getItem('accessToken');
+    api.post('http://localhost:8000/api/v1/basket', basketItem, {
+        headers: { 
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+    })
+    .then(() => {
+      alert(`Добавлено в корзину: ${product.name}`);
+    })
+    .catch(error => {
+      if (error.response.status === 401) {
+        
+        navigate('/login');
+      } else if (error.response.status === 400) {
+        alert('Товар уже в корзине');
+      } else {
+        console.log('Ошибка при добавлении в корзину:', error);
+        console.log(basketItem);
+        alert('Ошибка добавления');
+      }
       })
-      .catch(error => {
-        alert(error.response.data.detail || 'Ошибка добавления в корзину');
-      });
+  };
+
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await api.post(
+        'http://localhost:8000/api/v1/appeal',
+        {
+          username_appeal: formData.name,
+          email_appeal: formData.email,
+          text_appeal: formData.message
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      alert('Ваш запрос отправлен. Мы свяжемся с вами в ближайшее время.');
+      setFormData({ name: '', email: '', message: '' });
+      console.log('Ответ сервера:', response.data);
+    } catch (error) {
+      alert('Ошибка при отправке формы.');
+      console.error('Ошибка:', error.response?.data || error.message);
+    }
   };
 
   const goToDetails = (id) => {
@@ -100,16 +154,33 @@ const Home = () => {
       <section className="contact" id="contact">
         <div className="container">
           <h2>Контакты</h2>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            alert('Ваш запрос отправлен. Мы свяжемся с вами в ближайшее время.');
-            e.target.reset();
-          }}>
-            <input type="text" name="name" placeholder="Ваше имя" required />
-            <input type="email" name="email" placeholder="Ваш Email" required />
-            <textarea name="message" rows="5" placeholder="Ваше сообщение" required></textarea>
-            <button type="submit">Отправить</button>
-          </form>
+          <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            name="name"
+            placeholder="Ваше имя"
+            required
+            value={formData.name}
+            onChange={handleChange}
+          />
+          <input
+            type="email"
+            name="email"
+            placeholder="Ваш Email"
+            required
+            value={formData.email}
+            onChange={handleChange}
+          />
+          <textarea
+            name="message"
+            rows="5"
+            placeholder="Ваше сообщение"
+            required
+            value={formData.message}
+            onChange={handleChange}
+          ></textarea>
+          <button type="submit">Отправить</button>
+        </form>
         </div>
       </section>
       <footer>

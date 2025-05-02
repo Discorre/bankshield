@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../App';
+import axios from 'axios';
 
 const Login = () => {
   const { saveAuth } = useContext(CartContext);
@@ -11,10 +11,13 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post('http://localhost:8000/login', { email, password })
+    axios.post('http://localhost:8000/api/v1/login', { email, password })
       .then(response => {
-        alert(response.data.message);
-        saveAuth(response.data.user, response.data.access_token);
+        const { user, access_token, refresh_token } = response.data;
+        localStorage.setItem('accessToken', access_token);
+        localStorage.setItem('refreshToken', refresh_token);
+        localStorage.setItem('user', JSON.stringify(user));
+        saveAuth(user);
         navigate('/');
       })
       .catch(error => {

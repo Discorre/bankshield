@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
-import axios from 'axios';
 import { CartContext } from '../App';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/api';
 
 const ChangePassword = () => {
   const { user } = useContext(CartContext);
@@ -31,17 +31,21 @@ const ChangePassword = () => {
     }
     if (passwordError) return;
     
-    axios.patch('http://localhost:8000/change_password', {
-      email: user.email,
-      old_password: oldPassword,
-      new_password: newPassword
-    })
-      .then(response => {
-        alert(response.data.message);
-        navigate('/');
+    const accessToken = localStorage.getItem('accessToken');
+    api.patch('http://localhost:8000/api/v1/change_password', {
+        old_password: oldPassword,
+        new_password: newPassword
+      }, {
+        headers: { Authorization: `Bearer ${accessToken}` }
       })
+      .then(() => alert('Пароль успешно изменён'))
       .catch(error => {
-        alert(error.response.data.detail || 'Ошибка смены пароля');
+        if (error.response.status === 401) {
+          alert('Сессия истекла. Авторизуйтесь снова');
+          navigate('/login');
+        } else {
+          alert('Ошибка: ' + error.response.data.detail);
+        }
       });
   };
 

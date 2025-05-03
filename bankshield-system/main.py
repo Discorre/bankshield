@@ -83,6 +83,7 @@ class BasketItem(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     product_id = Column(String, ForeignKey("products.id"), nullable=False)
     
+
     user = relationship("User", back_populates="basket_items")
     product = relationship("Product")
 

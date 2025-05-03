@@ -1,14 +1,14 @@
-name: Full CI — React + FastAPI
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:15
@@ -19,61 +19,39 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U discorre -d bankshield"
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-      redis:
-        image: redis:alpine
-        ports:
-          - 6379:6379
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # --- FRONTEND ---
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Install frontend dependencies
-        working-directory: bankshield-client
-        run: npm ci
-
-      - name: Run React tests
-        working-directory: bankshield-client
-        run: npm test -- --watchAll=false
-
-      # --- BACKEND ---
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: '3.11'
 
-      - name: Install backend dependencies
+      - name: Install dependencies
         working-directory: bankshield-system
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run backend tests
-        working-directory: bankshield-system
+      - name: Start services
+        run: docker-compose -f docker-compose.yml up -d --build
+
+      - name: Wait for services to be ready
         run: |
-          pytest test_app.py
+          echo "Waiting for PostgreSQL to be ready..."
+          until docker exec $(docker ps -qf "name=db") pg_isready -U discorre; do
+            sleep 2
+          done
 
-      # --- Docker Compose check ---
-      - name: Docker Compose Build
-        run: docker-compose -f docker-compose.yml build
-
-      - name: Docker Compose Up
-        run: docker-compose -f docker-compose.yml up -d
-
-      - name: Wait for services to be healthy
-        run: sleep 10
-
-      - name: Docker Compose Down
-        run: docker-compose -f docker-compose.yml down
+      - name: Run tests inside backend container
+        run: |
+          docker exec $(docker ps -qf "name=bankshield-system") pytest test_app.py

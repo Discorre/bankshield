@@ -85,7 +85,7 @@ def test_get_product_not_found(client, invalid_id):
 # Tests for auth: register and login
 
 def test_register_and_login(client):
-    register_data = {"username": "testuser", "email": "test@example.com", "password": "secret"}
+    register_data = {"username": "testuser1", "email": "te1st@example.com", "password": "secret"}
     r = client.post("/api/v1/register", json=register_data)
     assert r.status_code == 200
     assert r.json()["message"] == "Регистрация прошла успешно"
@@ -95,7 +95,7 @@ def test_register_and_login(client):
     assert r2.status_code == 400
 
     # login
-    login_data = {"email": "test@example.com", "password": "secret"}
+    login_data = {"email": "te1st@example.com", "password": "secret"}
     r3 = client.post("/api/v1/login", json=login_data)
     assert r3.status_code == 200
     payload = r3.json()
@@ -106,8 +106,8 @@ def test_register_and_login(client):
 # Tests for basket: add and delete
 
 def test_basket_flow(client):
-    client.post("/api/v1/register", json={"username": "buser", "email": "b@example.com", "password": "pwd"})
-    login = client.post("/api/v1/login", json={"email": "b@example.com", "password": "pwd"}).json()
+    client.post("/api/v1/register", json={"username": "buser1", "email": "b1@example.com", "password": "pwd"})
+    login = client.post("/api/v1/login", json={"email": "b1@example.com", "password": "pwd"}).json()
     token = login["access_token"]
 
     prod_list = client.get("/api/v1/products").json()

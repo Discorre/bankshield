@@ -17,7 +17,7 @@ jobs:
           POSTGRES_PASSWORD: 0412
           POSTGRES_DB: bankshield
         ports:
-          - 5432:5432
+          - 6432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s

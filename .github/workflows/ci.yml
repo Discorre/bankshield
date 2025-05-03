@@ -16,8 +16,8 @@ jobs:
           POSTGRES_USER: discorre
           POSTGRES_PASSWORD: 0412
           POSTGRES_DB: bankshield
-        ports:
-          - 35432:5432
+        # ports:
+        #   - 35432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s

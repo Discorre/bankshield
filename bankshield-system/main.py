@@ -85,7 +85,7 @@ class BasketItem(Base):
     
 
     user = relationship("User", back_populates="basket_items")
-    product = relationship("Product")
+    
 
 class Appeals(Base):
     __tablename__ = "appeals"

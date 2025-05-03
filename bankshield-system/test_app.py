@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+from sqlalchemy import text
+from main import engine
 
 # Load environment variables from .env
 load_dotenv()
@@ -54,6 +56,12 @@ def client(db_session, monkeypatch):
     monkeypatch.setattr('main.get_db', override_get_db)
     client = TestClient(app)
     return client
+
+@pytest.fixture(autouse=True)
+def clean_tables():
+    with engine.connect() as conn:
+        conn.execute(text("TRUNCATE users RESTART IDENTITY CASCADE"))
+        conn.commit()
 
 # Helper to load default products
 @pytest.fixture(autouse=True)

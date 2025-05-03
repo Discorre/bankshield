@@ -13,7 +13,7 @@ const Header = () => {
   };
 
   return (
-    <header>
+    <header data-testid="header">
       <div className="container">
         <nav>
           <div className="logo">

@@ -14,3 +14,8 @@ bcrypt<4.0.0
 python-jose[cryptography]==3.3.0
 redis_client
 pydantic[email]
+pytest
+pytest-asyncio
+httpx
+requests
+fakeredis

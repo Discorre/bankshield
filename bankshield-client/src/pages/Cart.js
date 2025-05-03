@@ -5,14 +5,12 @@ import api from '../api/api';
 const Cart = () => {
   const { user } = useContext(CartContext);
   const [basketItems, setBasketItems] = useState([]);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const fetchBasket = async () => {
     try {
-      const response = await api.get('http://localhost:8000/api/v1/basket', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` }
-      });
-      
-      
+      const response = await api.get(`${API_URL}/basket`);
+          
       setBasketItems(response.data);
     } catch (error) {
       if (error.a)
@@ -24,13 +22,8 @@ const Cart = () => {
     fetchBasket();
   }, [user]);
 
-  const token = localStorage.getItem('accessToken');
   const removeItem = (basket_item_id) => {
-    api.delete(`http://localhost:8000/api/v1/basket/${basket_item_id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
+    api.delete(`${API_URL}/basket/${basket_item_id}`, {})
     .then(response => {
       fetchBasket();
     })

@@ -9,9 +9,11 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post('http://localhost:8000/api/v1/login', { email, password })
+    axios.post(`${API_URL}/login`, { email, password })
       .then(response => {
         const { user, access_token, refresh_token } = response.data;
         localStorage.setItem('accessToken', access_token);

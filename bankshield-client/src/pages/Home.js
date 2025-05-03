@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../App';
 import "../App.css";
-import axios from 'axios';
 import api from '../api/api';
 
 const Home = () => {
@@ -10,13 +9,16 @@ const Home = () => {
   const { user } = useContext(CartContext);
   const navigate = useNavigate();
 
+  const API_URL = process.env.REACT_APP_API_URL;
+
   useEffect(() => {
-    api.get(`http://localhost:8000/api/v1/products`)
+    //api.get(`http://localhost:8000/api/v1/products`)
+    api.get(`${API_URL}/products`)
     .then(response => setProducts(response.data))
     .catch(error => {
       alert('Услуга не найдена');
     });
-  }, []);
+  }, [API_URL]);
 
   const addToCart = (product) => {
     if (!user) {
@@ -25,23 +27,8 @@ const Home = () => {
       return;
     }
     
-    // Преобразуем объект продукта в формат, ожидаемый бэкендом
-    const basketItem = {
-      product_id: product.id,
-      name: product.name,
-      description: product.description,
-      full_description: product.full_description,
-      price: product.price,
-      image: product.image || ""
-    };
-  
-    const accessToken = localStorage.getItem('accessToken');
-    api.post('http://localhost:8000/api/v1/basket', basketItem, {
-        headers: { 
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-    })
+    const basketItem = {product_id: product.id};
+    api.post(`${API_URL}/basket`, basketItem)
     .then(() => {
       alert(`Добавлено в корзину: ${product.name}`);
     })
@@ -72,18 +59,12 @@ const Home = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('accessToken');
       const response = await api.post(
-        'http://localhost:8000/api/v1/appeal',
+        `${API_URL}/appeal`,
         {
           username_appeal: formData.name,
           email_appeal: formData.email,
           text_appeal: formData.message
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
       alert('Ваш запрос отправлен. Мы свяжемся с вами в ближайшее время.');

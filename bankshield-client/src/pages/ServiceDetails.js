@@ -7,14 +7,17 @@ const ServiceDetails = () => {
   const [service, setService] = useState(null);
   const navigate = useNavigate();
 
+  const API_URL = process.env.REACT_APP_API_URL;
+
   useEffect(() => {
-    api.get(`http://localhost:8000/api/v1/products/${id}`)
+    api.get(`${API_URL}/products/${id}`)
       .then(response => setService(response.data))
       .catch(error => {
         alert('Услуга не найдена');
         navigate('/');
       });
-  }, [id, navigate]);
+  }, [id, navigate, API_URL]);
+  
 
   if (!service) return <p>Загрузка...</p>;
 

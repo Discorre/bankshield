@@ -1,0 +1,79 @@
+name: Full CI — React + FastAPI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: discorre
+          POSTGRES_PASSWORD: 0412
+          POSTGRES_DB: bankshield
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U discorre -d bankshield"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # --- FRONTEND ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install frontend dependencies
+        working-directory: bankshield/bankshield-client
+        run: npm ci
+
+      - name: Run React tests
+        working-directory: bankshield/bankshield-client
+        run: npm test -- --watchAll=false
+
+      # --- BACKEND ---
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install backend dependencies
+        working-directory: bankshield/bankshield-system
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run backend tests
+        working-directory: bankshield/bankshield-system
+        run: |
+          pytest test_app.py
+
+      # --- Docker Compose check ---
+      - name: Docker Compose Build
+        run: docker-compose -f bankshield/docker-compose.yml build
+
+      - name: Docker Compose Up
+        run: docker-compose -f bankshield/docker-compose.yml up -d
+
+      - name: Wait for services to be healthy
+        run: sleep 10
+
+      - name: Docker Compose Down
+        run: docker-compose -f bankshield/docker-compose.yml down

@@ -9,9 +9,10 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.8.3",
     "bootstrap": "^5.3.3",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.3.0",
+    "joi": "^17.13.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.30.0",
     "react-scripts": "^5.0.1",
     "react-spinners": "^0.15.0",
     "router-dom": "^3.0.3",
@@ -40,5 +41,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.1",
+    "@babel/preset-react": "^7.27.1",
+    "babel-jest": "^29.7.0"
   }
 }

@@ -1,0 +1,4 @@
+*.log
+__pychache__
+venv
+*.env

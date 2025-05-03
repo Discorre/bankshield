@@ -1,8 +1,10 @@
 // api.js
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: `${API_URL}`,
 });
 
 // Флаг, чтобы не запускать несколько обновлений одновременно
@@ -43,7 +45,7 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const response = await axios.post('http://localhost:8000/refresh', {}, {
+        const response = await axios.post(`${API_URL}/refresh`, {}, {
           headers: {
             'Authorization': refreshToken,
           },
@@ -69,7 +71,6 @@ api.interceptors.response.use(
   }
 );
 
-// Добавим access токен к каждому запросу
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('accessToken');

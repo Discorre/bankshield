@@ -8,6 +8,7 @@ import Cart from './pages/Cart';
 import ServiceDetails from './pages/ServiceDetails';
 import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from "./components/ProtectedRoute";
+import PublicOnlyRoute from "./components/PublicOnlyRoute"
 import { ClipLoader } from 'react-spinners';
 import api from './api/api';
 
@@ -18,6 +19,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     setTimeout(() => {
@@ -40,7 +43,7 @@ function App() {
 
   const logout = async () => {
     try {
-      await api.post('http://localhost:8000/api/v1/logout', {}, {
+      await api.post(`${API_URL}/logout`, {}, {
         headers: {
           'refresh-token': localStorage.getItem('refreshToken')
         }
@@ -54,6 +57,7 @@ function App() {
       console.error('Ошибка при выходе:', error.response?.data || error.message);
     }
   };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen w-screen fixed top-0 left-0">
@@ -63,14 +67,17 @@ function App() {
   }
 
   return (
-    <CartContext.Provider value={{ cartItems, setCartItems, user, token, saveAuth, logout }}>
-      <Router>
-        <Header />
-        <Routes>
+    <div data-testid="app-root">
+      <CartContext.Provider value={{ cartItems, setCartItems, user, token, saveAuth, logout }}>
+        <Router>
+          <Header />
+          <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/service/:id" element={<ServiceDetails />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} /> 
+
+          <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+          <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} /> 
+
           <Route 
             path="/cart"
             element={<ProtectedRoute>
@@ -82,6 +89,7 @@ function App() {
         </Routes>
       </Router>
     </CartContext.Provider>
+  </div>
   );
 }
 

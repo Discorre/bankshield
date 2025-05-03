@@ -26,7 +26,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data  # Исправлено имя volume (было redis_client.py)
+      - redis_data:/data
     networks:
       - bankshield-network
     healthcheck:
@@ -63,12 +63,30 @@ services:
   bankshield-client:
     build: 
       context: ./bankshield-client
+      args:
+        REACT_APP_API_URL: "http://localhost:8000/api/v1"
       dockerfile: Dockerfile
     ports:
       - "80:80"
     networks:
       - bankshield-network
     restart: always
+
+  tests:
+    build:
+      context: ./bankshield-system
+      dockerfile: Dockerfile.tests
+    environment:
+      TEST_DATABASE_URL: postgresql+psycopg2://discorre1:0412@db:5432/bankshield
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: test-secret-key
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - bankshield-network
 
 volumes:
   postgres_data:

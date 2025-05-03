@@ -10,6 +10,8 @@ const ChangePassword = () => {
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
 
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const passwordRegex = /(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z!@#$%^&*]{6,}/;
 
   const handleNewPasswordChange = (e) => {
@@ -31,12 +33,9 @@ const ChangePassword = () => {
     }
     if (passwordError) return;
     
-    const accessToken = localStorage.getItem('accessToken');
-    api.patch('http://localhost:8000/api/v1/change_password', {
+    api.patch(`${API_URL}/change_password`, {
         old_password: oldPassword,
         new_password: newPassword
-      }, {
-        headers: { Authorization: `Bearer ${accessToken}` }
       })
       .then(() => alert('Пароль успешно изменён'))
       .catch(error => {

@@ -16,16 +16,14 @@ import datetime
 import uvicorn
 import os
 from dotenv import load_dotenv
+import json
+from pathlib import Path
 
 load_dotenv()
 
 # ==============================
 # Конфигурация безопасности
 # ==============================
-# SECRET_KEY = "94227be229cb55ff37a98d975b10656056de47ad3f1cd4ca5e2997efc7059e0d"  # openssl rand -hex 32
-# ALGORITHM = "HS256"
-# ACCESS_TOKEN_EXPIRE_MINUTES = 15
-
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
@@ -63,6 +61,9 @@ class RefreshToken(Base):
 
     user = relationship("User", back_populates="refresh_tokens")
 
+    def __repr__(self):
+        return f"<RefreshToken(id={self.id}, token='{self.token}', user_id={self.user_id})>"
+
 class User(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
@@ -76,18 +77,12 @@ class User(Base):
     
     basket_items = relationship("BasketItem", back_populates="user", cascade="all, delete-orphan")
 
-
 class BasketItem(Base):
     __tablename__ = "basket_items"
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     product_id = Column(String, ForeignKey("products.id"), nullable=False)
-    name = Column(String, nullable=False)
-    description = Column(Text, nullable=False)
-    full_description = Column(Text, nullable=True)
-    price = Column(Float, nullable=False)
-    image = Column(String, nullable=True)
-
+    
     user = relationship("User", back_populates="basket_items")
     product = relationship("Product")
 
@@ -104,13 +99,21 @@ Base.metadata.create_all(bind=engine)
 # ==============================
 # Схемы (Pydantic модели)
 # ==============================
-class ProductSchema(BaseModel):
+
+class GetAllProductsSchema(BaseModel):
     id: str = None
     name: str
     description: str
+    price: float
+
+    class Config:
+        orm_mode = True        
+
+class GetOneProductSchema(BaseModel):
+    id: str = None
+    name: str
     full_description: str = None
     price: float
-    image: str = None
 
     class Config:
         orm_mode = True
@@ -142,17 +145,12 @@ class ChangePasswordData(BaseModel):
     old_password: str
     new_password: str
 
-class BasketItemSchema(BaseModel):
-    id: str = None
-    product_id: str
-    name: str
-    description: str
-    full_description: str = None
-    price: float
-    image: str = None
+# class BasketItemSchema(BaseModel):
+#     id: str = None
+#     product_id: str
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         orm_mode = True
 
 class GetBasketItemShema(BaseModel):
     basket_id: str
@@ -250,50 +248,11 @@ app.add_middleware(
 # Заполнение базы данных дефолтными продуктами
 # ==============================
 def populate_products(db: Session):
-    default_products = [
-        {
-            "name": "Мониторинг угроз",
-            "description": "Непрерывное наблюдение за инцидентами.",
-            "full_description": "Мониторинг угроз – это комплексное наблюдение за потенциальными инцидентами в режиме реального времени. Мы используем современные методы анализа и обнаружения, чтобы своевременно реагировать на возможные атаки и предотвращать ущерб.",
-            "price": 20000.0,
-            "image": ""
-        },
-        {
-            "name": "Защита платежных систем",
-            "description": "Безопасность транзакций.",
-            "full_description": "Защита платежных систем включает в себя многоуровневые меры безопасности для защиты транзакций, предотвращения мошеннических атак и обеспечения безопасности финансовых операций. Наши решения адаптируются к современным угрозам.",
-            "price": 30000.0,
-            "image": ""
-        },
-        {
-            "name": "Анализ уязвимостей",
-            "description": "Аудит и выявление слабых мест.",
-            "full_description": "Анализ уязвимостей представляет собой комплексный аудит систем банка для выявления слабых мест и уязвимых точек. Наши специалисты предоставят подробный отчёт с рекомендациями по устранению проблем и повышению безопасности.",
-            "price": 40000.0,
-            "image": ""
-        },
-        {
-            "name": "Инцидентный ответ",
-            "description": "Быстрое реагирование на атаки.",
-            "full_description": "Инцидентный ответ – это оперативное реагирование на кибератаки с целью минимизации ущерба. Наша команда экспертов быстро восстанавливает системы и предотвращает дальнейшее проникновение злоумышленников.",
-            "price": 35000.0,
-            "image": ""
-        },
-        {
-            "name": "Криптографическая защита",
-            "description": "Современные методы шифрования.",
-            "full_description": "Криптографическая защита обеспечивает высокий уровень безопасности данных за счёт применения современных методов шифрования. Мы гарантируем, что ваши данные остаются защищёнными от несанкционированного доступа.",
-            "price": 25000.0,
-            "image": ""
-        },
-        {
-            "name": "Обучение персонала",
-            "description": "Тренинги по кибербезопасности.",
-            "full_description": "Обучение персонала включает профессиональные тренинги и семинары, направленные на повышение осведомлённости сотрудников о современных киберугрозах. Мы помогаем формировать культуру безопасности внутри компании.",
-            "price": 50000.0,
-            "image": ""
-        },
-    ]
+    file_path = Path(__file__).parent / "products.json"
+    
+    with open(file_path, "r", encoding="utf-8") as f:
+        default_products = json.load(f)
+
     for prod in default_products:
         exists = db.query(Product).filter(Product.name == prod["name"]).first()
         if not exists:
@@ -310,45 +269,45 @@ def startup_event():
 # ==============================
 # Эндпоинты для продуктов
 # ==============================
-@app.get("/api/v1/products", response_model=list[ProductSchema])
+@app.get("/api/v1/products", response_model=list[GetAllProductsSchema])
 def get_products(db: Session = Depends(get_db)):
     products = db.query(Product).all()
     return products
 
-@app.get("/api/v1/products/{product_id}", response_model=ProductSchema)
+@app.get("/api/v1/products/{product_id}", response_model=GetOneProductSchema)
 def get_product(product_id: str, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Продукт не найден")
     return product
 
-@app.post("/api/v1/products", response_model=ProductSchema)
-def add_product(product: ProductSchema, db: Session = Depends(get_db)):
-    db_product = Product(**product.dict())
-    db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
+# @app.post("/api/v1/products", response_model=ProductSchema)
+# def add_product(product: ProductSchema, db: Session = Depends(get_db)):
+#     db_product = Product(**product.dict())
+#     db.add(db_product)
+#     db.commit()
+#     db.refresh(db_product)
+#     return db_product
 
-@app.put("/api/v1/products/{product_id}", response_model=ProductSchema)
-def update_product(product_id: str, product: ProductSchema, db: Session = Depends(get_db)):
-    db_product = db.query(Product).filter(Product.id == product_id).first()
-    if not db_product:
-        raise HTTPException(status_code=404, detail="Продукт не найден")
-    for key, value in product.dict().items():
-        setattr(db_product, key, value)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
+# @app.put("/api/v1/products/{product_id}", response_model=ProductSchema)
+# def update_product(product_id: str, product: ProductSchema, db: Session = Depends(get_db)):
+#     db_product = db.query(Product).filter(Product.id == product_id).first()
+#     if not db_product:
+#         raise HTTPException(status_code=404, detail="Продукт не найден")
+#     for key, value in product.dict().items():
+#         setattr(db_product, key, value)
+#     db.commit()
+#     db.refresh(db_product)
+#     return db_product
 
-@app.delete("/api/v1/products/{product_id}")
-def delete_product(product_id: str, db: Session = Depends(get_db)):
-    db_product = db.query(Product).filter(Product.id == product_id).first()
-    if not db_product:
-        raise HTTPException(status_code=404, detail="Продукт не найден")
-    db.delete(db_product)
-    db.commit()
-    return {"detail": "Продукт удалён"}
+# @app.delete("/api/v1/products/{product_id}")
+# def delete_product(product_id: str, db: Session = Depends(get_db)):
+#     db_product = db.query(Product).filter(Product.id == product_id).first()
+#     if not db_product:
+#         raise HTTPException(status_code=404, detail="Продукт не найден")
+#     db.delete(db_product)
+#     db.commit()
+#     return {"detail": "Продукт удалён"}
 
 # ==============================
 # Эндпоинты для пользователей (регистрация, логин)
@@ -396,7 +355,7 @@ def login(data: LoginData, db: Session = Depends(get_db)):
         "user": UserLoginSchema.from_orm(user)
     }
 
-@app.post("/refresh")
+@app.post("/api/v1/refresh")
 def refresh_access_token(
     authorization: str = Header(...),
     db: Session = Depends(get_db)
@@ -432,9 +391,17 @@ def logout_user(
     db: Session = Depends(get_db)
 ):
     token_entry = db.query(RefreshToken).filter_by(token=refresh_token).first()
-    if token_entry:
-        db.delete(token_entry)
-        db.commit()
+
+    if token_entry == None:
+        raise HTTPException(status_code=401, detail="Refresh токен говно")
+
+    user = db.query(User).filter_by(id=token_entry.user_id).first()
+
+    user.token = ""
+    db.delete(token_entry)
+    db.commit()
+    db.refresh(user)
+    
     return {"message": "Вы вышли из системы"}
 
 # ==============================
@@ -443,10 +410,9 @@ def logout_user(
 @app.patch("/api/v1/change_password")
 def change_password(
     data: ChangePasswordData,
-    authorization: str = Header(...),  # токен из заголовка
+    authorization: str = Header(...),
     db: Session = Depends(get_db)
 ):
-    # Извлекаем токен из "Bearer <token>"
     try:
         scheme, token = authorization.split()
         if scheme.lower() != "bearer":
@@ -454,7 +420,6 @@ def change_password(
     except ValueError:
         raise HTTPException(status_code=401, detail="Неверный токен")
 
-    # Декодируем токен
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
@@ -463,25 +428,18 @@ def change_password(
     except JWTError:
         raise HTTPException(status_code=401, detail="Недействительный токен")
 
-    # Проверяем, что токен совпадает с тем, который сохранен у пользователя
     user = db.query(User).filter(User.id == user_id, User.token == token).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Пользователь не найден или токен недействителен")
 
-    # Проверяем старый пароль
     if not verify_password(data.old_password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Старый пароль неверный")
 
-    # Обновляем пароль
     user.hashed_password = get_password_hash(data.new_password)
     db.commit()
 
     return {"message": "Пароль успешно изменён"}
 
-
-# ==============================
-# Эндпоинты для работы с корзиной
-# ==============================
 @app.get("/api/v1/basket", response_model=list[GetBasketItemShema])
 def get_basket(
     authorization: str = Header(None),
@@ -490,42 +448,35 @@ def get_basket(
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Токен доступа обязателен")
 
-    # Извлекаем токен из заголовка Authorization
     token = authorization.split(" ")[1]
-    
-    # Валидация токена
     user_id = verify_token(token)
+    
     if not user_id:
         raise HTTPException(status_code=401, detail="Недействительный токен")
 
-    # Получаем пользователя из базы по ID
     user = db.query(User).filter(User.id == user_id).first()
-
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-    price = db.query(Product).filter(User.id == user_id).all()
 
-    # Возвращаем все товары из корзины пользователя
+    # Возвращаем товары из корзины
     return [
-    {
-        "basket_id": item.id,
-        "name": item.name,
-        "price": item.price
-    }
-    for item in user.basket_items
-]
+        {
+            "basket_id": item.id,
+            "name": item.product.name,
+            "price": item.product.price
+        }
+        for item in user.basket_items
+    ]
 
 class AddToBasketRequest(BaseModel):
     product_id: str
 
-@app.post("/api/v1/basket", response_model=BasketItemSchema)
+@app.post("/api/v1/basket")
 def add_to_basket(
     item: AddToBasketRequest,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    # Валидация токена
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
@@ -534,12 +485,10 @@ def add_to_basket(
     except JWTError:
         raise HTTPException(status_code=401, detail="Недействительный токен")
 
-    # Проверяем что токен существует у пользователя
     user = db.query(User).filter(User.id == user_id, User.token == token).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Пользователь не найден или токен недействителен")
 
-    # Проверка что товар уже в корзине
     existing_item = db.query(BasketItem).filter(
         BasketItem.user_id == user.id,
         BasketItem.product_id == item.product_id
@@ -547,22 +496,15 @@ def add_to_basket(
     if existing_item:
         raise HTTPException(status_code=400, detail="Товар уже добавлен в корзину")
 
-    # Находим продукт
     product = db.query(Product).filter(Product.id == item.product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Продукт не найден")
 
-    # Создаем запись в корзине
     basket_item = BasketItem(
-        #id = basket_item.id,
         user_id=user.id,
         product_id=product.id,
-        name=product.name,
-        description=product.description,
-        full_description=product.full_description,
-        price=product.price,
-        image=product.image
     )
+
     db.add(basket_item)
     db.commit()
     db.refresh(basket_item)

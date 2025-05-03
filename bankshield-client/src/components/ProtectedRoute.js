@@ -9,7 +9,6 @@ const ProtectedRoute = ({ children }) => {
   if (access_token == null) {
     return <Navigate to="/login" replace />;
   }
-
   return children;
 };
 

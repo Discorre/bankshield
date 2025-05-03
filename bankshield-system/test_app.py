@@ -70,24 +70,24 @@ def populate_products(db_session):
             db_session.add(Product(**p))
         db_session.commit()
 
-@pytest.fixture(scope="session", autouse=True)
-def wait_for_db():
-    import time
-    import psycopg2
-    for _ in range(10):
-        try:
-            conn = psycopg2.connect("postgresql://postgres:password@localhost:5432/postgres")
-            conn.close()
-            return
-        except psycopg2.OperationalError:
-            time.sleep(2)
-    raise Exception("PostgreSQL not ready")
+# @pytest.fixture(scope="session", autouse=True)
+# def wait_for_db():
+#     import time
+#     import psycopg2
+#     for _ in range(10):
+#         try:
+#             conn = psycopg2.connect("postgresql://postgres:password@localhost:5432/postgres")
+#             conn.close()
+#             return
+#         except psycopg2.OperationalError:
+#             time.sleep(2)
+#     raise Exception("PostgreSQL not ready")
 
-@pytest.fixture(autouse=True)
-def clean_tables(wait_for_db):
-    with engine.connect() as conn:
-        conn.execute(text("TRUNCATE users RESTART IDENTITY CASCADE"))
-        conn.commit()
+# @pytest.fixture(autouse=True)
+# def clean_tables(wait_for_db):
+#     with engine.connect() as conn:
+#         conn.execute(text("TRUNCATE users RESTART IDENTITY CASCADE"))
+#         conn.commit()
 
 # Tests for product endpoints
 

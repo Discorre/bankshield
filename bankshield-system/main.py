@@ -82,10 +82,14 @@ class BasketItem(Base):
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     product_id = Column(String, ForeignKey("products.id"), nullable=False)
-    
+    name = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    full_description = Column(Text, nullable=True)
+    price = Column(Float, nullable=True)
+    image = Column(String, nullable=True)
 
     user = relationship("User", back_populates="basket_items")
-    
+    product = relationship("Product")
 
 class Appeals(Base):
     __tablename__ = "appeals"

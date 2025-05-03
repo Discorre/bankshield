@@ -57,12 +57,6 @@ def client(db_session, monkeypatch):
     client = TestClient(app)
     return client
 
-@pytest.fixture(autouse=True)
-def clean_tables():
-    with engine.connect() as conn:
-        conn.execute(text("TRUNCATE users RESTART IDENTITY CASCADE"))
-        conn.commit()
-
 # Helper to load default products
 @pytest.fixture(autouse=True)
 def populate_products(db_session):
@@ -75,6 +69,25 @@ def populate_products(db_session):
         for p in products:
             db_session.add(Product(**p))
         db_session.commit()
+
+@pytest.fixture(scope="session", autouse=True)
+def wait_for_db():
+    import time
+    import psycopg2
+    for _ in range(10):
+        try:
+            conn = psycopg2.connect("postgresql://postgres:password@localhost:5432/postgres")
+            conn.close()
+            return
+        except psycopg2.OperationalError:
+            time.sleep(2)
+    raise Exception("PostgreSQL not ready")
+
+@pytest.fixture(autouse=True)
+def clean_tables(wait_for_db):
+    with engine.connect() as conn:
+        conn.execute(text("TRUNCATE users RESTART IDENTITY CASCADE"))
+        conn.commit()
 
 # Tests for product endpoints
 
@@ -93,7 +106,7 @@ def test_get_product_not_found(client, invalid_id):
 # Tests for auth: register and login
 
 def test_register_and_login(client):
-    register_data = {"username": "testuser1", "email": "te1st@example.com", "password": "secret"}
+    register_data = {"username": "testuser", "email": "test@example.com", "password": "secret"}
     r = client.post("/api/v1/register", json=register_data)
     assert r.status_code == 200
     assert r.json()["message"] == "Регистрация прошла успешно"
@@ -103,7 +116,7 @@ def test_register_and_login(client):
     assert r2.status_code == 400
 
     # login
-    login_data = {"email": "te1st@example.com", "password": "secret"}
+    login_data = {"email": "test@example.com", "password": "secret"}
     r3 = client.post("/api/v1/login", json=login_data)
     assert r3.status_code == 200
     payload = r3.json()
@@ -114,8 +127,8 @@ def test_register_and_login(client):
 # Tests for basket: add and delete
 
 def test_basket_flow(client):
-    client.post("/api/v1/register", json={"username": "buser1", "email": "b1@example.com", "password": "pwd"})
-    login = client.post("/api/v1/login", json={"email": "b1@example.com", "password": "pwd"}).json()
+    client.post("/api/v1/register", json={"username": "buser", "email": "b@example.com", "password": "pwd"})
+    login = client.post("/api/v1/login", json={"email": "b@example.com", "password": "pwd"}).json()
     token = login["access_token"]
 
     prod_list = client.get("/api/v1/products").json()

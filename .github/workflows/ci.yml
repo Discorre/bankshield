@@ -51,6 +51,15 @@ jobs:
       - name: Start services
         run: docker compose -f docker-compose.yml up -d --build
 
+      - name: Wait for DB to be ready
+        run: |
+            for i in {1..20}; do
+            docker exec bankshield-db-1 pg_isready -U postgres && exit 0
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+            done
+            echo "PostgreSQL not ready" && exit 1
+
       - name: Wait for services to be ready
         run: |
           echo "Waiting for PostgreSQL to be ready..."

@@ -60,13 +60,13 @@ jobs:
             done
             echo "PostgreSQL not ready" && exit 1
 
-      # - name: Wait for services to be ready
-      #   run: |
-      #     echo "Waiting for PostgreSQL to be ready..."
-      #     until docker exec $(docker ps -qf "name=db") pg_isready -U discorre; do
-      #       sleep 2
-      #     done
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          until docker exec $(docker ps -qf "name=db") pg_isready -U discorre; do
+            sleep 2
+          done
 
       - name: Run tests inside backend container
         run: |
-          docker exec $(docker ps -qf "name=bankshield-system") pytest tests/test_app.py
+          docker exec $(docker ps -qf "name=bankshield-system") pytest tests/test_routes.py

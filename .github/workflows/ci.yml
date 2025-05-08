@@ -63,7 +63,7 @@ jobs:
       # - name: Wait for services to be ready
       #   run: |
       #     echo "Waiting for PostgreSQL to be ready..."
-      #     until docker exec $(docker ps -qf "name=db") pg_isready -U discorre; do
+      #     until docker exec $(docker ps -qf "name=bankshield-db-1") pg_isready -U discorre; do
       #       sleep 2
       #     done
 

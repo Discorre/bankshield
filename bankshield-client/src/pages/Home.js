@@ -12,7 +12,6 @@ const Home = () => {
   const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
-    //api.get(`http://localhost:8000/api/v1/products`)
     api.get(`${API_URL}/products`)
     .then(response => setProducts(response.data))
     .catch(error => {

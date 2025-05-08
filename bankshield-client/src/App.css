@@ -286,6 +286,15 @@ footer p {
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
+.form-container-edit {
+  max-width: 800px;  
+  margin: 60px auto; 
+  padding: 40px;   
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
 .form-container h2 {
   text-align: center;
   margin-bottom: 20px;

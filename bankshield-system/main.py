@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Header, Response
+from fastapi import FastAPI, HTTPException, Depends, status, Header, Response, Query
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import create_engine, Column, String, Float, Text, ForeignKey, Integer
+from sqlalchemy import CheckConstraint, create_engine, Column, String, Float, Text, ForeignKey, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from jose import jwt, JWTError, ExpiredSignatureError
@@ -11,7 +11,7 @@ from jose.exceptions import JWTError
 from passlib.context import CryptContext
 import uuid
 from sqlalchemy import DateTime
-from datetime import datetime, timedelta
+from datetime import timedelta
 import datetime
 import uvicorn
 import os
@@ -40,6 +40,10 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# import logging
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 # ==============================
 # Определение моделей ORM
 # ==============================
@@ -64,6 +68,20 @@ class RefreshToken(Base):
     def __repr__(self):
         return f"<RefreshToken(id={self.id}, token='{self.token}', user_id={self.user_id})>"
 
+class Roles(Base):
+    __tablename__ = "roles"
+    role_id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, unique=True, nullable=False)
+
+    user_roles = relationship("UserRole", back_populates="role", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        CheckConstraint(name.in_(['admin', 'user']), name='valid_role_name'),
+    )
+
+    def __repr__(self):
+        return f"<Roles(name='{self.name}')>"
+
 class User(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
@@ -72,10 +90,25 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     token = Column(String, nullable=True)
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete")
+    role_id = Column(String, ForeignKey("roles.role_id"), nullable=False)
     token_created_at = Column(DateTime, nullable=True)
     last_login_at = Column(DateTime, nullable=True)
     
     basket_items = relationship("BasketItem", back_populates="user", cascade="all, delete-orphan")
+    user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
+
+    def get_role_names(self):
+        return [ur.role.name for ur in self.user_roles]
+    
+class UserRole(Base):
+    __tablename__ = "userrole"
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    role_id = Column(String, ForeignKey("roles.role_id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+
+    user = relationship("User", back_populates="user_roles")
+    role = relationship("Roles", back_populates="user_roles")
+
 
 class BasketItem(Base):
     __tablename__ = "basket_items"
@@ -104,6 +137,19 @@ Base.metadata.create_all(bind=engine)
 # ==============================
 # Схемы (Pydantic модели)
 # ==============================
+
+class UpdateProductsSchema(BaseModel):
+    id: str = None
+    name: str
+    description: str
+    full_description: str
+    price: float
+
+    class Config:
+        orm_mode = True
+
+class GetRole(BaseModel):
+    name: str
 
 class GetAllProductsSchema(BaseModel):
     id: str = None
@@ -150,13 +196,6 @@ class ChangePasswordData(BaseModel):
     old_password: str
     new_password: str
 
-# class BasketItemSchema(BaseModel):
-#     id: str = None
-#     product_id: str
-
-#     class Config:
-#         orm_mode = True
-
 class GetBasketItemShema(BaseModel):
     basket_id: str
     name: str
@@ -169,6 +208,16 @@ class AppealRequest(BaseModel):
     username_appeal: str
     email_appeal: str
     text_appeal: str
+
+# ==============================
+# Зависимость для получения сессии БД
+# ==============================
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # ==============================
 # Вспомогательные функции
@@ -184,59 +233,64 @@ def get_user_by_email(db: Session, email: str):
 
 def create_access_token(user_id: str, expires_delta: int = ACCESS_TOKEN_EXPIRE_MINUTES):
     to_encode = {"sub": user_id}
-    expire = datetime.datetime.utcnow() + timedelta(minutes=expires_delta)
+    expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=expires_delta)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def create_refresh_token(user_id: str, expires_days: int = 7):
     to_encode = {"sub": user_id}
-    expire = datetime.datetime.utcnow() + timedelta(days=expires_days)
+    expire = datetime.datetime.utcnow() + datetime.timedelta(days=expires_days)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(SessionLocal)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Неверные учетные данные",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None or user.token != token:
-        raise credentials_exception
-    return user
-
 def verify_token(token: str):
     try:
+        if not token:
+            raise HTTPException(status_code=401, detail="Токен доступа обязателен")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Недействительный токен")
+            raise HTTPException(status_code=401, detail="Недействительный токен1")
         return user_id
     except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Срок действия токена истёк")
     except JWTError:
         raise HTTPException(status_code=401, detail="Недействительный токен")
+
+def get_current_user(authorization: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Неверные учетные данные",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    print("after [ ]: ", authorization)
+
+
+    token = authorization.split(" ")[1]
+    print("before [ ]: ", token)
+
+    user_id = verify_token(token)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None or user.token != token:
+        raise credentials_exception
+    return user
     
-# ==============================
-# Зависимость для получения сессии БД
-# ==============================
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def check_roles(required_roles: list[str]):
+    def role_checker(user: User = Depends(get_current_user)):
+        user_roles = user.get_role_names()
+        if not any(role in user_roles for role in required_roles):
+            raise HTTPException(status_code=403, detail="Недостаточно прав")
+        return user
+    return role_checker
+
+def has_required_roles(user: User, required_roles: list[str]) -> bool:
+    user_roles = user.get_role_names()
+    return any(role in user_roles for role in required_roles)
 
 # ==============================
-# Создание приложения FastAPI
+# Создание приложения FastAPI   
 # ==============================
 app = FastAPI()
 
@@ -264,11 +318,35 @@ def populate_products(db: Session):
             new_prod = Product(**prod)
             db.add(new_prod)
     db.commit()
+    
+
+def populate_roles(db: Session):
+    file_path = Path(__file__).parent / "roles.json"
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"Файл {file_path} не найден")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        default_roles = json.load(f)
+
+    for role_data in default_roles:
+        role_name = role_data.get("name")
+        if not role_name:
+            raise ValueError("Роль должна содержать поле 'name'")
+
+        existing_role = db.query(Roles).filter(Roles.name == role_name).first()
+
+        if not existing_role:
+            new_role = Roles(name=role_name)
+            db.add(new_role)
+
+    db.commit()
 
 @app.on_event("startup")
 def startup_event():
     db = SessionLocal()
     populate_products(db)
+    populate_roles(db)
     db.close()
 
 # ==============================
@@ -279,6 +357,13 @@ def get_products(db: Session = Depends(get_db)):
     products = db.query(Product).all()
     return products
 
+@app.get("/api/v1/allproducts/{product_id}", response_model=UpdateProductsSchema)
+def get_products(product_id : str, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Продукт не найден")
+    return product
+
 @app.get("/api/v1/products/{product_id}", response_model=GetOneProductSchema)
 def get_product(product_id: str, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -286,55 +371,183 @@ def get_product(product_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Продукт не найден")
     return product
 
-# @app.post("/api/v1/products", response_model=ProductSchema)
-# def add_product(product: ProductSchema, db: Session = Depends(get_db)):
-#     db_product = Product(**product.dict())
-#     db.add(db_product)
-#     db.commit()
-#     db.refresh(db_product)
-#     return db_product
+@app.post("/api/v1/products")
+def add_product(
+    product: UpdateProductsSchema,
+    Authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        user = get_current_user(Authorization, db)
+        check_roles(["admin"])(user)
+    except HTTPException as e:
+        raise e
 
-# @app.put("/api/v1/products/{product_id}", response_model=ProductSchema)
-# def update_product(product_id: str, product: ProductSchema, db: Session = Depends(get_db)):
-#     db_product = db.query(Product).filter(Product.id == product_id).first()
-#     if not db_product:
-#         raise HTTPException(status_code=404, detail="Продукт не найден")
-#     for key, value in product.dict().items():
-#         setattr(db_product, key, value)
-#     db.commit()
-#     db.refresh(db_product)
-#     return db_product
+    db_product = Product(**product.dict())
 
-# @app.delete("/api/v1/products/{product_id}")
-# def delete_product(product_id: str, db: Session = Depends(get_db)):
-#     db_product = db.query(Product).filter(Product.id == product_id).first()
-#     if not db_product:
-#         raise HTTPException(status_code=404, detail="Продукт не найден")
-#     db.delete(db_product)
-#     db.commit()
-#     return {"detail": "Продукт удалён"}
+    try:
+        db.add(db_product)
+        db.commit()
+        db.refresh(db_product)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Ошибка при добавлении продукта")
+    
+    return {"message": f"Данные о продукте \"{db_product.name}\" успешно добавлены"}
+
+@app.patch("/api/v1/products")
+def update_product(
+    product: UpdateProductsSchema, 
+    prod_id: str = Query(..., description="ID продукта для обновления"),
+    Authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        user = get_current_user(Authorization, db)
+        check_roles(["admin"])(user)
+    except HTTPException as e:
+        raise e
+
+    db_product = db.query(Product).filter(Product.id == prod_id).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Продукт не найден")
+
+    # Исключаем обновление id
+    update_data = product.dict(exclude_unset=True)
+    if "id" in update_data:
+        del update_data["id"]
+
+    for key, value in update_data.items():
+        setattr(db_product, key, value)
+
+    db.commit()
+    db.refresh(db_product)
+
+    return {"message": f"Данные продукта \"{db_product.name}\" успешно обновлены"}
+
+@app.delete("/api/v1/products")
+def delete_product(
+    prod_id: str = Query(..., description="ID продукта для удаления"),
+    Authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):   
+    try:
+        user = get_current_user(Authorization, db)
+        check_roles(["admin"])(user)
+    except HTTPException as e:
+        raise e
+                  
+    db_product = db.query(Product).filter(Product.id == prod_id).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Продукт не найден")
+    db.delete(db_product)
+    db.commit()
+    return {"detail": "Данные продукта \"{db_product.name}\" успешно удалены"}
 
 # ==============================
 # Эндпоинты для пользователей (регистрация, логин)
 # ==============================
+
+@app.get("/api/v1/rolier")
+def is_admin(
+    Authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):
+
+    user = get_current_user(Authorization, db)
+    is_admin = has_required_roles(user ,["admin"])
+
+    if is_admin != True:
+        return {"role": False}
+
+    return {"role": True}
+
+@app.post("/api/v1/admin/register", response_model=dict)
+def register_admin(user: UserCreateSchema, db: Session = Depends(get_db)):
+    existing = get_user_by_email(db, user.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="Пользователь уже существует")
+    
+    user_role = db.query(Roles).filter(Roles.name == "admin").first()
+    if not user_role:
+        raise HTTPException(status_code=500, detail="Роль 'admin' не найдена в системе")
+   
+    hashed_password = get_password_hash(user.password)
+    db_user = User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        role_id=user_role.role_id
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    user_role_link = UserRole(
+        user_id=db_user.id,
+        role_id=user_role.role_id
+    )
+    db.add(user_role_link)
+    db.commit()
+   
+    return { "message": "Регистрация админа прошла успешно" }
+
+@app.post("/api/v1/admin/login", response_model=dict)
+def login_admin(data: LoginData, db: Session = Depends(get_db)):
+    user = get_user_by_email(db, data.email)
+    if not user or not verify_password(data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Неверные данные для входа")
+
+    is_admin = has_required_roles(user ,["admin"])
+
+    if is_admin != True:
+        return {"message": "У вас недостаточно прав"}
+
+    token = create_access_token(user.id)
+    
+    user.token = token
+    user.token_created_at = datetime.datetime.utcnow()
+    user.last_login_at = datetime.datetime.utcnow()
+    refresh_token = create_refresh_token(str(user.id))
+
+    db.add(RefreshToken(user_id=user.id, token=refresh_token))
+    db.commit()
+
+    return {
+        "message": "Вход выполнен успешно",
+        "access_token": token,
+        "refresh_token": refresh_token,
+        "user": UserLoginSchema.from_orm(user)
+    }
 
 @app.post("/api/v1/register", response_model=dict)
 def register(user: UserCreateSchema, db: Session = Depends(get_db)):
     existing = get_user_by_email(db, user.email)
     if existing:
         raise HTTPException(status_code=400, detail="Пользователь уже существует")
+    
+    user_role = db.query(Roles).filter(Roles.name == "user").first()
+    if not user_role:
+        raise HTTPException(status_code=500, detail="Роль 'user' не найдена в системе")
    
     hashed_password = get_password_hash(user.password)
     db_user = User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        role_id=user_role.role_id
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-   
 
+    user_role_link = UserRole(
+        user_id=db_user.id,
+        role_id=user_role.role_id
+    )
+    db.add(user_role_link)
+    db.commit()
+   
     return { "message": "Регистрация прошла успешно" }
 
 @app.post("/api/v1/login", response_model=dict)
@@ -342,6 +555,11 @@ def login(data: LoginData, db: Session = Depends(get_db)):
     user = get_user_by_email(db, data.email)
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Неверные данные для входа")
+
+    is_admin = has_required_roles(user ,["user"])
+
+    if is_admin != True:
+        return {"message": "Пожалуйста, используйте правильную форму для регистрации"}
 
     token = create_access_token(user.id)
 
@@ -525,10 +743,7 @@ def delete_from_basket(
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Токен доступа обязателен")
 
-    # Извлекаем токен из заголовка Authorization
     token = authorization.split(" ")[1]
-    
-    # Валидация токена
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(status_code=401, detail="Недействительный токен")
@@ -551,10 +766,8 @@ def add_new_appeal(
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Токен доступа обязателен")
 
-    # Извлекаем токен из заголовка Authorization
     token = authorization.split(" ")[1]
     
-    # Валидация токена
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(status_code=401, detail="Недействительный токен")

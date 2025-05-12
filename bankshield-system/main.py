@@ -45,8 +45,8 @@ Base = declarative_base()
 # ==============================
 class Product(Base):
     __tablename__ = "products"
-    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String, nullable=False)
+    id = Column(String(40), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(55), nullable=False)
     description = Column(Text, nullable=False)
     full_description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)
@@ -55,7 +55,7 @@ class Product(Base):
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"))
+    user_id = Column(String(40), ForeignKey("users.id"))
     token = Column(String, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -66,7 +66,7 @@ class RefreshToken(Base):
 
 class Roles(Base):
     __tablename__ = "roles"
-    role_id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    role_id = Column(String(40), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, unique=True, nullable=False)
 
     user_roles = relationship("UserRole", back_populates="role", cascade="all, delete-orphan")
@@ -80,16 +80,16 @@ class Roles(Base):
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
-    username = Column(String, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
+    id = Column(String(40), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String(55), nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     token = Column(String, nullable=True)
-    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete")
-    role_id = Column(String, ForeignKey("roles.role_id"), nullable=False)
+    role_id = Column(String(40), ForeignKey("roles.role_id"), nullable=False)
     token_created_at = Column(DateTime, nullable=True)
     last_login_at = Column(DateTime, nullable=True)
     
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete")
     basket_items = relationship("BasketItem", back_populates="user", cascade="all, delete-orphan")
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
 
@@ -98,9 +98,9 @@ class User(Base):
     
 class UserRole(Base):
     __tablename__ = "userrole"
-    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
-    role_id = Column(String, ForeignKey("roles.role_id"), nullable=False)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(String(40), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    role_id = Column(String(40), ForeignKey("roles.role_id"), nullable=False)
+    user_id = Column(String(40), ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="user_roles")
     role = relationship("Roles", back_populates="user_roles")
@@ -108,23 +108,18 @@ class UserRole(Base):
 
 class BasketItem(Base):
     __tablename__ = "basket_items"
-    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    product_id = Column(String, ForeignKey("products.id"), nullable=False)
-    name = Column(String, nullable=True)
-    description = Column(Text, nullable=True)
-    full_description = Column(Text, nullable=True)
-    price = Column(Float, nullable=True)
-    image = Column(String, nullable=True)
+    id = Column(String(40), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(40), ForeignKey("users.id"), nullable=False)
+    product_id = Column(String(40), ForeignKey("products.id"), nullable=False)
 
     user = relationship("User", back_populates="basket_items")
     product = relationship("Product")
 
 class Appeals(Base):
     __tablename__ = "appeals"
-    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
-    username_apeall = Column(String, nullable=False)
-    email_apeall = Column(String, nullable=False)
+    id = Column(String(40), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    username_apeall = Column(String(55), nullable=False)
+    email_apeall = Column(String(255), nullable=False)
     text_apeall = Column(String, nullable=False)
     creation_date = Column(DateTime, nullable=False)
 
@@ -356,13 +351,6 @@ def get_products(db: Session = Depends(get_db)):
     products = db.query(Product).all()
     return products
 
-@app.get("/api/v1/allproducts/{product_id}", response_model=UpdateProductsSchema)
-def get_products(product_id : str, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="Продукт не найден")
-    return product
-
 @app.get("/api/v1/products/{product_id}", response_model=GetOneProductSchema)
 def get_product(product_id: str, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -441,25 +429,25 @@ def delete_product(
         raise HTTPException(status_code=404, detail="Продукт не найден")
     db.delete(db_product)
     db.commit()
-    return {"detail": "Данные продукта \"{db_product.name}\" успешно удалены"}
+    return {"detail": "Данные продукта успешно удалены"}
 
 # ==============================
 # Эндпоинты для пользователей (регистрация, логин)
 # ==============================
 
-@app.get("/api/v1/rolier")
-def is_admin(
-    Authorization: str = Header(...),
-    db: Session = Depends(get_db)
-):
+# @app.get("/api/v1/rolier")
+# def is_admin(
+#     Authorization: str = Header(...),
+#     db: Session = Depends(get_db)
+# ):
 
-    user = get_current_user(Authorization, db)
-    is_admin = has_required_roles(user ,["admin"])
+#     user = get_current_user(Authorization, db)
+#     is_admin = has_required_roles(user ,["admin"])
 
-    if is_admin != True:
-        return {"role": False}
+#     if is_admin != True:
+#         return {"role": False}
 
-    return {"role": True}
+#     return {"role": True}
 
 @app.post("/api/v1/admin/register", response_model=dict)
 def register_admin(user: UserCreateSchema, db: Session = Depends(get_db)):
@@ -588,9 +576,8 @@ def get_me(
     return {
         "username": user.username,
         "email": user.email,
-        "roles": lambda user: "admin" if has_required_roles(user ,["admin"]) else "user"
+        "roles": "admin" if has_required_roles(user ,["admin"]) else "user"
     }
-
 
 @app.post("/api/v1/refresh")
 def refresh_access_token(

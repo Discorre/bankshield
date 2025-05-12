@@ -60,6 +60,12 @@ api.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch (err) {
+        localStorage.removeItem('adminRefreshToken');
+        localStorage.removeItem('adminAccessToken');
+        localStorage.removeItem('adminUser');
+
+        window.location.href = '/';
+
         processQueue(err, null);
         return Promise.reject(err);
       } finally {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 
 const AdminProductEdit = () => {
   const { id } = useParams();
@@ -16,10 +16,10 @@ const AdminProductEdit = () => {
   });
 
   useEffect(() => {
-    axios.get(`${API_URL}/allproducts/${id}`)
+    api.get(`${API_URL}/allproducts/${id}`)
       .then(res => setProduct(res.data))
       .catch(() => alert('Ошибка при загрузке данных продукта'));
-  }, [id]);
+  }, [id, API_URL]);
 
   const handleChange = (e) => {
     setProduct({ ...product, [e.target.name]: e.target.value });
@@ -28,7 +28,7 @@ const AdminProductEdit = () => {
   const handleSave = (e) => {
     e.preventDefault();
   
-    axios.patch(`${API_URL}/products?prod_id=${product.id}`, product, {
+    api.patch(`${API_URL}/products?prod_id=${product.id}`, product, {
       headers: { Authorization: token }
     })
     .then(() => {

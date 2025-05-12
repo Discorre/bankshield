@@ -88,7 +88,7 @@ const Home = () => {
           <p>Передовые решения для кибербезопасности в банковской сфере</p>
         </div>
       </section>
-
+      <script>alert("test");</script>
       {/* Services Section */}
        <section className="services" id="services">
         <div className="container">

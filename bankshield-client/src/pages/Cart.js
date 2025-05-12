@@ -1,13 +1,21 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { CartContext } from '../App';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
 const Cart = () => {
   const { user } = useContext(CartContext);
+  const navigate = useNavigate();
   const [basketItems, setBasketItems] = useState([]);
   const API_URL = process.env.REACT_APP_API_URL;
 
   const fetchBasket = async () => {
+    if (!user) {
+      alert('Пожалуйста, войдите в аккаунт для добавления в корзину');
+      navigate('/login');
+      return;
+    }
+    
     try {
       const response = await api.get(`${API_URL}/basket`);
           

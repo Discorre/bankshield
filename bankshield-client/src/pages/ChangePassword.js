@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
 const ChangePassword = () => {
-  const { user } = useContext(CartContext);
+  const { user, logout } = useContext(CartContext);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -42,6 +42,7 @@ const ChangePassword = () => {
         if (error.response.status === 401) {
           alert('Сессия истекла. Авторизуйтесь снова');
           navigate('/login');
+          logout();
         } else {
           alert('Ошибка: ' + error.response.data.detail);
         }

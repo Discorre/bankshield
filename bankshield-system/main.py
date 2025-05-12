@@ -40,10 +40,6 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# import logging
-# logging.basicConfig()
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
 # ==============================
 # Определение моделей ORM
 # ==============================
@@ -247,6 +243,9 @@ def verify_token(token: str):
     try:
         if not token:
             raise HTTPException(status_code=401, detail="Токен доступа обязателен")
+        if redis_client.exists(token):
+            raise HTTPException(status_code=401, detail="Срок действия токена истёк или он был отозван")
+
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
@@ -578,12 +577,28 @@ def login(data: LoginData, db: Session = Depends(get_db)):
         "user": UserLoginSchema.from_orm(user)
     }
 
+@app.get("/api/v1/me")
+def get_me(
+    authorization: str = Header(...),
+    db: Session = Depends(get_db)
+    ):
+
+    user = get_current_user(authorization, db)
+
+    return {
+        "username": user.username,
+        "email": user.email,
+        "roles": lambda user: "admin" if has_required_roles(user ,["admin"]) else "user"
+    }
+
+
 @app.post("/api/v1/refresh")
 def refresh_access_token(
     authorization: str = Header(...),
     db: Session = Depends(get_db)
 ):
     try:
+        # Парсим и проверяем refresh_token
         payload = jwt.decode(authorization, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         exp = payload.get("exp")
@@ -591,17 +606,31 @@ def refresh_access_token(
         if not user_id or not exp:
             raise HTTPException(status_code=401, detail="Недействительный токен")
 
-        # Срок действия
+        # Проверка истечения срока действия
         if datetime.datetime.utcfromtimestamp(exp) < datetime.datetime.utcnow():
             raise HTTPException(status_code=401, detail="Refresh токен истёк")
 
-        # Проверка, существует ли токен в БД
+        # Проверяем, существует ли refresh_token в БД
         stored_token = db.query(RefreshToken).filter_by(token=authorization, user_id=user_id).first()
         if not stored_token:
             raise HTTPException(status_code=401, detail="Refresh токен не найден или отозван")
 
-        # Генерация нового access токена
+        # Получаем пользователя из БД
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+        # Генерируем новый access_token
         new_access_token = create_access_token(user_id)
+
+        # Обновляем токен и время в БД
+        user.token = new_access_token
+        user.token_created_at = datetime.datetime.utcnow()
+
+        # Сохраняем изменения
+        db.commit()
+        db.refresh(user)
+
         return {"access_token": new_access_token}
 
     except JWTError:
@@ -614,17 +643,24 @@ def logout_user(
     db: Session = Depends(get_db)
 ):
     token_entry = db.query(RefreshToken).filter_by(token=refresh_token).first()
-
-    if token_entry == None:
-        raise HTTPException(status_code=401, detail="Refresh токен говно")
+    if not token_entry:
+        raise HTTPException(status_code=401, detail="Неверный refresh токен")
 
     user = db.query(User).filter_by(id=token_entry.user_id).first()
+    current_access_token = user.token
 
-    user.token = ""
+    # Удаление refresh токена
     db.delete(token_entry)
+
+    # Очистка access токена в БД
+    user.token = ""
+
+    # Добавление access токена в Redis как "отозванного"
+    redis_client.setex(current_access_token, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES), "revoked")
+
     db.commit()
     db.refresh(user)
-    
+
     return {"message": "Вы вышли из системы"}
 
 # ==============================

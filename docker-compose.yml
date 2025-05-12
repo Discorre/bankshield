@@ -10,8 +10,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql 
-    # ports:
-    #   - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U discorre1 -d bankshield"]
       interval: 5s
@@ -32,8 +30,6 @@ services:
     volumes:
       - postgres_data_test:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql 
-    # ports:
-    #   - "5433:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "discorre_test", "-d", "bankshield_test"]
       interval: 5s
@@ -86,8 +82,12 @@ services:
     build: 
       context: ./bankshield-client
       args:
-        REACT_APP_API_URL: "http://localhost:8000/api/v1"
+        - REACT_APP_API_URL=http://localhost:8000/api/v1
       dockerfile: Dockerfile
+    environment:
+    - REACT_APP_API_URL=http://localhost:8000/api/v1
+    env_file:
+      - .env
     ports:
       - "80:80"
     networks:
@@ -111,22 +111,6 @@ services:
     command: ["sh", "-c", "sleep 5 && pytest tests/test_routes.py -v"]
     networks:
       - bankshield-network
-
-  # tests:
-  #   build:
-  #     context: ./bankshield-system
-  #     dockerfile: Dockerfile.tests
-  #   environment:
-  #     TEST_DATABASE_URL: postgresql+psycopg2://discorre1:0412@db:5432/bankshield
-  #     REDIS_URL: redis://redis:6379/0
-  #     SECRET_KEY: test-secret-key
-  #     ALGORITHM: HS256
-  #     ACCESS_TOKEN_EXPIRE_MINUTES: 15
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   networks:
-  #     - bankshield-network
 
 volumes:
   postgres_data:

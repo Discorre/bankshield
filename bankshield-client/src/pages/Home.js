@@ -6,6 +6,11 @@ import api from '../api/api';
 
 const Home = () => {
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [filterText, setFilterText] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 6; // количество продуктов на странице
+
   const { user } = useContext(CartContext);
   const navigate = useNavigate();
 
@@ -13,11 +18,32 @@ const Home = () => {
 
   useEffect(() => {
     api.get(`${API_URL}/products`)
-    .then(response => setProducts(response.data))
-    .catch(error => {
-      alert('Услуга не найдена');
-    });
+      .then(response => {
+        setProducts(response.data);
+        setFilteredProducts(response.data); // изначально все товары
+      })
+      .catch(error => {
+        alert('Услуга не найдена');
+      });
   }, [API_URL]);
+
+  // Фильтрация при изменении текста
+  useEffect(() => {
+    const filtered = products.filter(product =>
+      product.name.toLowerCase().includes(filterText.toLowerCase())
+    );
+    setFilteredProducts(filtered);
+    setCurrentPage(1); // сброс на первую страницу при новом поиске
+  }, [filterText, products]);
+
+  // Пагинация
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
   const addToCart = (product) => {
     if (!user) {
@@ -25,24 +51,22 @@ const Home = () => {
       navigate('/login');
       return;
     }
-    
-    const basketItem = {product_id: product.id};
+
+    const basketItem = { product_id: product.id };
     api.post(`${API_URL}/basket`, basketItem)
-    .then(() => {
-      alert(`Добавлено в корзину: ${product.name}`);
-    })
-    .catch(error => {
-      if (error.response.status === 401) {
-        
-        navigate('/login');
-      } else if (error.response.status === 400) {
-        alert('Товар уже в корзине');
-      } else {
-        console.log('Ошибка при добавлении в корзину:', error);
-        console.log(basketItem);
-        alert('Ошибка добавления');
-      }
+      .then(() => {
+        alert(`Добавлено в корзину: ${product.name}`);
       })
+      .catch(error => {
+        if (error.response?.status === 401) {
+          navigate('/login');
+        } else if (error.response?.status === 400) {
+          alert('Товар уже в корзине');
+        } else {
+          console.log('Ошибка при добавлении в корзину:', error);
+          alert('Ошибка добавления');
+        }
+      });
   };
 
   const [formData, setFormData] = useState({
@@ -88,26 +112,60 @@ const Home = () => {
           <p>Передовые решения для кибербезопасности в банковской сфере</p>
         </div>
       </section>
-      <script>alert("test");</script>
+
       {/* Services Section */}
-       <section className="services" id="services">
+      <section className="services" id="services">
         <div className="container">
           <h2>Наши услуги</h2>
+
+          {/* Фильтр по названию */}
+          <div className="filter-section">
+            <input
+              type="text"
+              placeholder="Поиск по названию услуги..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              style={{ width: '100%', padding: '10px', marginBottom: '20px' }}
+            />
+          </div>
+
           <div className="service-grid">
-            {products.map(product => (
-              <div className="service-card" key={product.id}>
-                <h3>{product.name}</h3>
-                <p>{product.description.substring(0, 100)}</p>
-                <p className="price">Цена: {product.price} руб/месяц</p>
-                <div className="button-container">
+            {currentProducts.length > 0 ? (
+              currentProducts.map(product => (
+                <div className="service-card" key={product.id}>
+                  <h3>{product.name}</h3>
+                  <p>{product.description.substring(0, 100)}...</p>
+                  <p className="price">Цена: {product.price} руб/месяц</p>
+                  <div className="button-container">
                     <button className="detail-btn" onClick={() => goToDetails(product.id)}>
-                        Подробнее
+                      Подробнее
                     </button>
                     <button className="detail-btn" onClick={() => addToCart(product)}>
-                        В корзину
+                      В корзину
                     </button>
+                  </div>
                 </div>
-              </div>
+              ))
+            ) : (
+              <p>Услуги не найдены.</p>
+            )}
+          </div>
+
+          {/* Пагинация */}
+          <div className="pagination">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => paginate(i + 1)}
+                disabled={currentPage === i + 1}
+                style={{
+                  margin: '0 5px',
+                  fontWeight: currentPage === i + 1 ? 'bold' : 'normal',
+                  cursor: 'pointer'
+                }}
+              >
+                {i + 1}
+              </button>
             ))}
           </div>
         </div>
@@ -135,46 +193,42 @@ const Home = () => {
         <div className="container">
           <h2>Контакты</h2>
           <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            name="name"
-            placeholder="Ваше имя"
-            required
-            value={formData.name}
-            onChange={handleChange}
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Ваш Email"
-            required
-            value={formData.email}
-            onChange={handleChange}
-          />
-          <textarea
-            name="message"
-            rows="5"
-            placeholder="Ваше сообщение"
-            required
-            value={formData.message}
-            onChange={handleChange}
-          ></textarea>
-          <button type="submit">Отправить</button>
-        </form>
+            <input
+              type="text"
+              name="name"
+              placeholder="Ваше имя"
+              required
+              value={formData.name}
+              onChange={handleChange}
+            />
+            <input
+              type="email"
+              name="email"
+              placeholder="Ваш Email"
+              required
+              value={formData.email}
+              onChange={handleChange}
+            />
+            <textarea
+              name="message"
+              rows="5"
+              placeholder="Ваше сообщение"
+              required
+              value={formData.message}
+              onChange={handleChange}
+            ></textarea>
+            <button type="submit">Отправить</button>
+          </form>
         </div>
       </section>
-      <footer>
-      <div className="container">
-        <p>&copy; 2024 BankShield. Все права защищены.</p>
-      </div>
-    </footer>
-    </div>
 
-    
+      <footer>
+        <div className="container">
+          <p>&copy; 2024 BankShield. Все права защищены.</p>
+        </div>
+      </footer>
+    </div>
   );
 };
 
 export default Home;
-
-
-

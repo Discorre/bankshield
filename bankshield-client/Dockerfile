@@ -6,13 +6,13 @@ WORKDIR /app
 
 # 3. Копируем package.json и package-lock.json и устанавливаем зависимости
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm install && npm install react-scripts
 
 # 4. Копируем весь проект и собираем production-версию
 COPY . .
 RUN npm run build
 
-# 5. Используем Nginx для раздачи собранного фронтенда
+# 5. Используем Nginx для раздачи собранного фронтенда 080906
 FROM nginx:alpine
 
 # 6. Копируем файлы из билдера в папку Nginx

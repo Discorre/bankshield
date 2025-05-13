@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Header, Response, Query
+from fastapi import FastAPI, HTTPException, Depends, status, Header, Response, Query, Request
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -18,8 +18,23 @@ import os
 from dotenv import load_dotenv
 import json
 from pathlib import Path
+import logging
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),  # Вывод в консоль
+        logging.FileHandler("app.log")  # Запись в файл app.log
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 # ==============================
 # Конфигурация безопасности
@@ -235,12 +250,11 @@ def create_refresh_token(user_id: str, expires_days: int = 7):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_token(token: str):
-    try:
-        if not token:
+    if not token:
             raise HTTPException(status_code=401, detail="Токен доступа обязателен")
-        if redis_client.exists(token):
-            raise HTTPException(status_code=401, detail="Срок действия токена истёк или он был отозван")
-
+    if redis_client.exists(token):
+        raise HTTPException(status_code=401, detail="Срок действия токена истёк или он был отозван")
+    try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
@@ -249,7 +263,8 @@ def verify_token(token: str):
     except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Срок действия токена истёк")
     except JWTError:
-        raise HTTPException(status_code=401, detail="Недействительный токен")
+        raise HTTPException(status_code=401, detail="Недействительный токенё12")
+
 
 def get_current_user(authorization: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -259,7 +274,6 @@ def get_current_user(authorization: str = Depends(oauth2_scheme), db: Session = 
     )
 
     print("after [ ]: ", authorization)
-
 
     token = authorization.split(" ")[1]
     print("before [ ]: ", token)
@@ -343,6 +357,29 @@ def startup_event():
     populate_roles(db)
     db.close()
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    logger.warning(f"HTTP error: {exc.detail} (status_code={exc.status_code}) on {request.url}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.warning(f"Validation error: {exc.errors()} on {request.url}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
 # ==============================
 # Эндпоинты для продуктов
 # ==============================
@@ -357,6 +394,15 @@ def get_product(product_id: str, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Продукт не найден")
     return product
+
+
+@app.get("/api/v1/allproducts/{product_id}", response_model=UpdateProductsSchema)
+def get_products(product_id : str, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Продукт не найден")
+    return product
+
 
 @app.post("/api/v1/products")
 def add_product(
@@ -392,8 +438,8 @@ def update_product(
     try:
         user = get_current_user(Authorization, db)
         check_roles(["admin"])(user)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise HTTPException(status_code=403, detail="Доступ запрещен")
 
     db_product = db.query(Product).filter(Product.id == prod_id).first()
     if not db_product:
@@ -434,20 +480,6 @@ def delete_product(
 # ==============================
 # Эндпоинты для пользователей (регистрация, логин)
 # ==============================
-
-# @app.get("/api/v1/rolier")
-# def is_admin(
-#     Authorization: str = Header(...),
-#     db: Session = Depends(get_db)
-# ):
-
-#     user = get_current_user(Authorization, db)
-#     is_admin = has_required_roles(user ,["admin"])
-
-#     if is_admin != True:
-#         return {"role": False}
-
-#     return {"role": True}
 
 @app.post("/api/v1/admin/register", response_model=dict)
 def register_admin(user: UserCreateSchema, db: Session = Depends(get_db)):

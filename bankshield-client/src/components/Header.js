@@ -22,6 +22,7 @@ const Header = () => {
             </Link>
           </div>
           <ul>
+            <li><Link to="/admin/login">Вы админ?</Link></li>
             <li><Link to="/">Главная</Link></li>
             <li><a href="/#services">Услуги</a></li>
             <li><a href="/#about">О компании</a></li>

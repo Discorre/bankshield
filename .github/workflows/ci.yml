@@ -48,6 +48,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install dependencies2
+        working-directory: bankshield-client
+        run: |
+          npm install react-scripts
+
       - name: Start services
         run: docker compose -f docker-compose.yml up -d --build
 

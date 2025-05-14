@@ -12,3 +12,13 @@
 2025-05-12 15:29:51,076 - main - WARNING - Validation error: [{'type': 'missing', 'loc': ('header', 'Authorization'), 'msg': 'Field required', 'input': None}] on http://localhost:8000/api/v1/products?prod_id=4c8d5814-14a7-4204-af62-1faf39440670
 2025-05-12 15:32:07,118 - main - WARNING - HTTP error: Недействительный токен (status_code=401) on http://localhost:8000/api/v1/basket
 2025-05-12 15:43:52,885 - main - WARNING - Validation error: [{'type': 'missing', 'loc': ('header', 'Authorization'), 'msg': 'Field required', 'input': None}] on http://localhost:8000/api/v1/products?prod_id=fc87750a-91b3-48f0-b0ea-771c56a600b5
+2025-05-14 05:11:22,258 - main - WARNING - HTTP error: Неверные данные для входа (status_code=401) on http://localhost:8000/api/v1/admin/login
+2025-05-14 05:14:04,315 - main - WARNING - HTTP error: Неверные данные для входа (status_code=401) on http://localhost:8000/api/v1/login
+2025-05-14 05:14:18,852 - main - WARNING - HTTP error: Неверные данные для входа (status_code=401) on http://localhost:8000/api/v1/login
+2025-05-14 05:14:20,493 - main - WARNING - HTTP error: Неверные данные для входа (status_code=401) on http://localhost:8000/api/v1/login
+2025-05-14 05:14:39,396 - main - WARNING - HTTP error: Неверные данные для входа (status_code=401) on http://localhost:8000/api/v1/login
+2025-05-14 05:14:53,571 - main - WARNING - HTTP error: Неверные данные для входа (status_code=401) on http://localhost:8000/api/v1/login
+2025-05-14 05:15:01,314 - main - WARNING - HTTP error: Неверные данные для входа (status_code=401) on http://localhost:8000/api/v1/login
+2025-05-14 05:23:15,536 - main - WARNING - HTTP error: Неверный refresh токен (status_code=401) on http://localhost:8000/api/v1/logout
+2025-05-14 05:23:15,645 - main - WARNING - HTTP error: Refresh токен не найден или отозван (status_code=401) on http://localhost:8000/api/v1/refresh
+2025-05-14 05:25:14,358 - main - WARNING - HTTP error: У вас недостаточно прав (status_code=403) on http://localhost:8000/api/v1/admin/login

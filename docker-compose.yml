@@ -92,6 +92,9 @@ services:
     #   - .env
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs
     networks:
       - bankshield-network
     restart: always

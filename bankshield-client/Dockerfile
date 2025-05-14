@@ -6,7 +6,7 @@ WORKDIR /app
 
 # 3. Копируем package.json и package-lock.json и устанавливаем зависимости
 COPY package.json package-lock.json ./
-RUN npm install && npm install react-scripts
+RUN npm install && npm install
 
 # 4. Копируем весь проект и собираем production-версию
 COPY . .
@@ -18,8 +18,5 @@ FROM nginx:alpine
 # 6. Копируем файлы из билдера в папку Nginx
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# 7. Копируем кастомный конфиг Nginx (если нужно)
-#COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# 8. Запускаем Nginx
+# 7. Запускаем Nginx
 CMD ["nginx", "-g", "daemon off;"]

@@ -520,7 +520,7 @@ def login_admin(data: LoginData, db: Session = Depends(get_db)):
     is_admin = has_required_roles(user ,["admin"])
 
     if is_admin != True:
-        return {"message": "У вас недостаточно прав"}
+        raise HTTPException(status_code=403, detail="У вас недостаточно прав")
 
     token = create_access_token(user.id)
     
